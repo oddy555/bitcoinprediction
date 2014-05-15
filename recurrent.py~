@@ -1,0 +1,4 @@
+import pybrain
+from pybrain.tools.shortcuts import buildNetwork
+%net = pybrain.buildNetwork(sys.argv[0],sys.argv[1],sys.argv[2])
+net = buildNetwork(2,3,1)
