@@ -1,6 +1,9 @@
 from pybrain.structure import FullConnection, RecurrentNetwork, LinearLayer, SigmoidLayer
 from pybrain.datasets import SupervisedDataSet
 from pybrain.structure import FullConnection, RecurrentNetwork, LinearLayer, SigmoidLayer
+from pybrain.supervised.trainers import BackpropTrainer
+from pybrain.tools.shortcuts import buildNetwork
+import pickle
 import csv
 
 def createRecurrent(inputSize,nHidden):
@@ -14,26 +17,116 @@ def createRecurrent(inputSize,nHidden):
     n.sortModules()
     return n
 
-def createDataset(nInputs,inputSize):
+def candleGen():
     fileName = 'bitstampUSD.csv'
-    
-    ds = SupervisedDataSet(inputSize,1)
-    i = 0;
-    input = []
+
+    interval = 3600
+    istart = 0 
+    iend= 0
+    openP = 0
+    closeP = 0
+    hi = 0
+    low = 0
+    avg = 0
+    list = []
+#prices = []
+
+    fileName = 'bitstampUSD.csv'
     with open(fileName,'rb') as data:
         reader = csv.reader(data)
-        for row in reader:
-           
-            if i < 6:
-                input = input + [row[2]]
-                i = i +1
-            elif i == 6:
-                i = 0
-                ds.appendLinked(input,[row[2]])
-                input = []
+        row = reader.next()
+        istart = float(row[0])
+        openP = float(row[1])
+        hi = float(openP)
+        low = float(openP)
+        n = 0
+        sum = openP
+    #    i = 0
+        for line in reader:
+            n = n + 1
+            iend = float(line[0])
+            current = float(line[1])
+            sum = sum + current 
+            if current > hi:
+                hi = current
+            if current < low:
+                low = current
+            if iend-istart >= 60:
+                prices = []
+                closeP = current
+                avg = sum/n
+                prices.append(openP)
+                prices.append(closeP)
+                prices.append(hi)
+                prices.append(low)
+                prices.append(avg)
+                list.append(prices)
+                istart = iend
+                openP = current
+                low = current
+                hi = current
+                sum = 0
+                n = 0
+    return list
+
+
+def createDataset(nInputs,inputSize,nOutputs):
+    index = 0 
+    ds = SupervisedDataSet(inputSize,nOutputs)
+    i = 0
+    j = 0
+    pList =candleGen()
+    input = []
+ 
+    for sub in pList:
+        if nInputs == j:
+            break
+        if i < inputSize:
+            input.append(sub[index])
+            
+        else:
+            ds.appendLinked(input,sub[index])
+            input = []
+            input.append(sub[index])
+            i = 0
+            j = j + 1
+        i = i + 1
     return ds
-                
-        
-#net = createRecurrent(6,6)
-ds = createDataset(10,6)
-print ds
+
+def createDataset2(nInputs,inputSize,nOutputs):
+    index = 0 
+    ds = SupervisedDataSet(inputSize,nOutputs)
+    i = 0
+    j = 0
+    pList =candleGen()
+    input = []
+ 
+    for sub in pList:
+        if nInputs == j:
+            break
+        elif i < inputSize:
+            input.append(sub[index])
+            i = i+1
+        elif i == inputSize:
+            ds.appendLinked(input,sub[index])
+            input.pop(0)
+            input.append(sub[index])
+            j = j + 1
+            i = i + 1
+        else:
+            ds.appendLinked(input,sub[index])
+            input.pop(0)
+            input.append(sub[index])
+            j = j + 1
+
+    return ds
+               
+ 
+
+#net = createRecurrent(6,12)
+ds = createDataset2(10000,6,1)
+net = buildNetwork(6,12,1,recurrent=True,bias=True)
+#print ds
+trainer = BackpropTrainer(net,ds)
+x = trainer.train()
+print x
