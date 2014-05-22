@@ -20,7 +20,7 @@ def createRecurrent(inputSize,nHidden):
 def candleGen():
     fileName = 'bitstampUSD.csv'
 
-    interval = 3600
+    interval = 60
     istart = 0 
     iend= 0
     openP = 0
@@ -51,7 +51,7 @@ def candleGen():
                 hi = current
             if current < low:
                 low = current
-            if iend-istart >= 60:
+            if iend-istart >= interval:
                 prices = []
                 closeP = current
                 avg = sum/n
@@ -67,6 +67,8 @@ def candleGen():
                 hi = current
                 sum = 0
                 n = 0
+                
+#    print list
     return list
 
 
@@ -97,8 +99,9 @@ def createDataset2(nInputs,inputSize,nOutputs):
     index = 0 
     ds = SupervisedDataSet(inputSize,nOutputs)
     i = 0
-    j = 0
+    j =  0
     pList =candleGen()
+    print len(pList)
     input = []
  
     for sub in pList:
@@ -122,11 +125,14 @@ def createDataset2(nInputs,inputSize,nOutputs):
     return ds
                
  
-
+#,recurrent=True
 #net = createRecurrent(6,12)
-ds = createDataset2(10000,6,1)
-net = buildNetwork(6,12,1,recurrent=True,bias=True)
+ds = createDataset2(100000,12,1)
+net = buildNetwork(12,12,1,bias=True)
 #print ds
-trainer = BackpropTrainer(net,ds)
+trainer = BackpropTrainer(net,ds,batchlearning=True)
+
+
+#x = trainer.trainUntilConvergence(maxEpochs=25)
 x = trainer.train()
-print x
+print x 
