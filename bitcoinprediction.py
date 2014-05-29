@@ -2,9 +2,13 @@ from pybrain.structure import FullConnection, RecurrentNetwork, LinearLayer, Sig
 from pybrain.datasets import SupervisedDataSet
 from pybrain.structure import FullConnection, RecurrentNetwork, LinearLayer, SigmoidLayer
 from pybrain.supervised.trainers import BackpropTrainer
+from pybrain.supervised.trainers import RPropMinusTrainer
 from pybrain.tools.shortcuts import buildNetwork
 import pickle
 import csv
+
+
+
 
 def createRecurrent(inputSize,nHidden):
     n = RecurrentNetwork()
@@ -19,8 +23,11 @@ def createRecurrent(inputSize,nHidden):
 
 def candleGen():
     fileName = 'bitstampUSD.csv'
-
-    interval = 60
+    global maxV
+    global minV
+    maxV = 0.0
+    minV = 0.0
+    interval = 3600
     istart = 0 
     iend= 0
     openP = 0
@@ -47,6 +54,10 @@ def candleGen():
             iend = float(line[0])
             current = float(line[1])
             sum = sum + current 
+            if maxV < current:
+                maxV = current
+            if minV > current:
+                minV = current
             if current > hi:
                 hi = current
             if current < low:
@@ -85,7 +96,6 @@ def createDataset(nInputs,inputSize,nOutputs):
             break
         if i < inputSize:
             input.append(sub[index])
-            
         else:
             ds.appendLinked(input,sub[index])
             input = []
@@ -96,15 +106,17 @@ def createDataset(nInputs,inputSize,nOutputs):
     return ds
 
 def createDataset2(nInputs,inputSize,nOutputs):
-    index = 0 
+    index = 1
     ds = SupervisedDataSet(inputSize,nOutputs)
     i = 0
     j =  0
     pList =candleGen()
     print len(pList)
     input = []
- 
+    z = 0
     for sub in pList:
+       
+
         if nInputs == j:
             break
         elif i < inputSize:
@@ -121,18 +133,46 @@ def createDataset2(nInputs,inputSize,nOutputs):
             input.pop(0)
             input.append(sub[index])
             j = j + 1
+        
+        
+    return ds
 
+def createDataset3(nInputs,inputSize,nOutputs):
+    index = 1
+    ds = SupervisedDataSet(inputSize,nOutputs)
+    i = 0
+    j =  0
+    
+    pList =candleGen()
+    print len(pList)
+    input = []
+    z = 0
+    for sub in pList:
+        if nInputs == j:
+            break
+        elif i < inputSize:
+            val = (sub[index]-minV)/(maxV-minV)
+            input.append(val)
+            i = i+1
+        else:
+            val = (sub[index]-minV)/(maxV-minV)
+            ds.appendLinked(input,val)
+            input.pop(0)
+            input.append(val)
+            j = j + 1
     return ds
                
  
 #,recurrent=True
 #net = createRecurrent(6,12)
-ds = createDataset2(100000,12,1)
-net = buildNetwork(12,12,1,bias=True)
+ds = createDataset3(10000,1,1)
+net = buildNetwork(1,6,1,bias=True,recurrent=True)
 #print ds
-trainer = BackpropTrainer(net,ds,batchlearning=True)
+trainer = BackpropTrainer(net,ds,batchlearning=False,lrdecay=0.0,momentum=0.0,learningrate=0.01)
+#trainer = RPropMinusTrainer(net,ds)
 
-
-#x = trainer.trainUntilConvergence(maxEpochs=25)
-x = trainer.train()
-print x 
+#x = trainer.trainUntilConvergence(maxEpochs=100)
+ran = 50
+for i in range(ran):
+    x = trainer.train()
+    print x 
