@@ -28,7 +28,7 @@ def candleGen():
     maxV = 0.0
     minV = 0.0
     interval = 3600
-    istart = 0 
+    istart = 0
     iend= 0
     openP = 0
     closeP = 0
@@ -53,7 +53,7 @@ def candleGen():
             n = n + 1
             iend = float(line[0])
             current = float(line[1])
-            sum = sum + current 
+            sum = sum + current
             if maxV < current:
                 maxV = current
             if minV > current:
@@ -78,19 +78,19 @@ def candleGen():
                 hi = current
                 sum = 0
                 n = 0
-                
+
 #    print list
     return list
 
 
 def createDataset(nInputs,inputSize,nOutputs):
-    index = 0 
+    index = 0
     ds = SupervisedDataSet(inputSize,nOutputs)
     i = 0
     j = 0
     pList =candleGen()
     input = []
- 
+
     for sub in pList:
         if nInputs == j:
             break
@@ -115,7 +115,7 @@ def createDataset2(nInputs,inputSize,nOutputs):
     input = []
     z = 0
     for sub in pList:
-       
+
 
         if nInputs == j:
             break
@@ -133,36 +133,38 @@ def createDataset2(nInputs,inputSize,nOutputs):
             input.pop(0)
             input.append(sub[index])
             j = j + 1
-        
-        
+
+
     return ds
+
+def normalize(data):
+    return (data-minV)/(maxV-minV)
 
 def createDataset3(nInputs,inputSize,nOutputs):
     index = 1
     ds = SupervisedDataSet(inputSize,nOutputs)
     i = 0
     j =  0
-    
+
     pList =candleGen()
     print len(pList)
     input = []
     z = 0
     for sub in pList:
+        val = normalize(sub[index])
         if nInputs == j:
             break
         elif i < inputSize:
-            val = (sub[index]-minV)/(maxV-minV)
             input.append(val)
             i = i+1
         else:
-            val = (sub[index]-minV)/(maxV-minV)
             ds.appendLinked(input,val)
             input.pop(0)
             input.append(val)
             j = j + 1
     return ds
-               
- 
+
+
 #,recurrent=True
 #net = createRecurrent(6,12)
 ds = createDataset3(10000,1,1)
@@ -175,4 +177,4 @@ trainer = BackpropTrainer(net,ds,batchlearning=False,lrdecay=0.0,momentum=0.0,le
 ran = 50
 for i in range(ran):
     x = trainer.train()
-    print x 
+    print x
