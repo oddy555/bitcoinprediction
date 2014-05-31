@@ -4,6 +4,7 @@ from pybrain.structure import FullConnection, RecurrentNetwork, LinearLayer, Sig
 from pybrain.supervised.trainers import BackpropTrainer
 from pybrain.supervised.trainers import RPropMinusTrainer
 from pybrain.tools.shortcuts import buildNetwork
+import math
 import pickle
 import csv
 
@@ -21,13 +22,12 @@ def createRecurrent(inputSize,nHidden):
     n.sortModules()
     return n
 
-def candleGen():
+def candleGen(interval):
     fileName = 'bitstampUSD.csv'
     global maxV
     global minV
     maxV = 0.0
     minV = 0.0
-    interval = 60*60*24
     istart = 0
     iend= 0
     openP = 0
@@ -36,8 +36,6 @@ def candleGen():
     low = 0
     avg = 0
     list = []
-#prices = []
-
     fileName = 'bitstampUSD.csv'
     with open(fileName,'rb') as data:
         reader = csv.reader(data)
@@ -48,7 +46,7 @@ def candleGen():
         low = float(openP)
         n = 0
         sum = openP
-    #    i = 0
+
         for line in reader:
             n = n + 1
             iend = float(line[0])
@@ -141,13 +139,13 @@ def normalize(data):
 def denormalize(data):
     return data*(maxV-minV)-minV
 
-def createDataset3(plist, nInputs,inputSize,nOutputs):
+def createDataset3(pList, nInputs,inputSize,nOutputs):
     index = 1
     ds = SupervisedDataSet(inputSize,nOutputs)
     i = 0
     j =  0
 
-    print len(pList)
+
     input = []
     z = 0
     for sub in pList:
@@ -168,25 +166,40 @@ def createDataset3(plist, nInputs,inputSize,nOutputs):
 #,recurrent=True
 #net = createRecurrent(6,12)
 inputSize = 2
-pList =candleGen()
-ds = createDataset2(pList[0:900], 10000,inputSize,1)
+interval = 60*60*1
+pList = candleGen(interval)
+len_pList = len(pList)
+test_set_num = 10 #int(math.floor(len_pList*0.15))
+epochs = 35
+hiddenNodes = 8
+
+print "======== Settings ========"
+print "input_interval: %d, input_vector_size: %d, data_set: %d, test_set_num: %d, epochs: %d" % (interval, inputSize, len_pList, test_set_num, epochs, )
+limit = len_pList-test_set_num
+ds = createDataset3(pList[0:int(limit)], limit,inputSize,1)
 #net = buildNetwork(1,6,1,bias=True,recurrent=True)
-#print ds
 #trainer = BackpropTrainer(net,ds,batchlearning=False,lrdecay=0.0,momentum=0.0,learningrate=0.01)
 
-net = buildNetwork(inputSize, 6, 1, bias=True)
-#print ds
+net = buildNetwork(inputSize, hiddenNodes, 1, bias=True)
 trainer = RPropMinusTrainer(net, verbose=True,)
-trainer.trainOnDataset(ds,20)
+#trainer = BackpropTrainer(net,ds,batchlearning=False,lrdecay=0.0,momentum=0.0,learningrate=0.01, verbose=True)
+trainer.trainOnDataset(ds,epochs)
 trainer.testOnData(verbose=True)
-print pList[901:]
 
-i = 900
+i = len_pList-test_set_num
 last_value = normalize(pList[i-2][1])
 last_last_value = normalize(pList[i-1][1])
-for i in range(901, 940):
+out_data = []
+print "======== Testing ========"
+for i in range(len_pList-test_set_num+1, len_pList):
     value = denormalize(net.activate([last_last_value, last_value]))
-    print "Index: %d  Prediction: %f" % (i, value)
+    out_datum = (i, pList[i][1], value)
+    out_data.append(out_datum)
+
+    print "Index: %d Actual: %f Prediction: %f" % out_datum
+
     last_value = normalize(value)
     last_last_value = last_value
+
+print out_data
 
